@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -33,16 +34,22 @@ namespace DownloadPinterest
         {
             InitializeComponent();
             this.DataContext = notification;
-            
+            txtUrl.Text = "https://www.pinterest.com/search/pins/?q=Anime%20naruto&rs=rs&eq=&etslf=2086&term_meta[]=Anime%7Crecentsearch%7C0&term_meta[]=naruto%7Crecentsearch%7C0";
+
+
         }
         ReadOnlyCollection<Cookie> allCookies;
-        string title, folder = "a";
+        string title, folder,pUrl = "a";
+        int slScroll=100;
         ChromeDriver chromeDriver;
         string ProfileFolderPath = "Profile";
+        List<String> lstCheck = new List<string>();
         List<ImageMetaData> lstRs = new List<ImageMetaData>();
         string[] stringSeparators = new string[] { "\r\n" };
-        string[] stringSeparators2 = new string[] { "image/" };
-       
+        string[] stringSeparators2 = new string[] { "," };
+        string[] stringSeparators3 = new string[] { "/" };
+
+
         private void click1_Click(object sender, RoutedEventArgs e)
         {
             bool b = true;
@@ -55,14 +62,16 @@ namespace DownloadPinterest
                     {
                         title = textTitle.Text;
                         folder = textFolder.Text;
+                        pUrl = txtUrl.Text;
+                        slScroll = Int32.Parse(txtScroll.Text); ;
                     });
 
 
                     notification.ActionNotifi = "Starting";
                     string currentLine = "";
-                    currentLine = File.ReadAllText("abc.txt");
+                    /*currentLine = File.ReadAllText("abc.txt");
 
-                    List<string> listStrLineElements = currentLine.Split(stringSeparators, StringSplitOptions.None).ToList();
+                    List<string> listStrLineElements = currentLine.Split(stringSeparators, StringSplitOptions.None).ToList();*/
 
 
                    
@@ -101,12 +110,16 @@ namespace DownloadPinterest
 
                         chromeDriver = new ChromeDriver(service, options);
                     }
-
-                    for (int i = 0; i < listStrLineElements.Count; i++)
+                        chromeDriver.Url = pUrl;
+                        chromeDriver.Navigate();
+                    for (int i = 0; i < slScroll; i++)
                     {
                         try
                         {
-                            ThreadCrawlData(listStrLineElements[i]);
+                            IJavaScriptExecutor js = chromeDriver as IJavaScriptExecutor;
+                            var addJquery = " script = document.createElement('script');script.src = \"https://code.jquery.com/jquery-3.4.1.min.js\";document.getElementsByTagName('head')[0].appendChild(script);";
+                            js.ExecuteScript(addJquery);
+                            ThreadCrawlData(i);
                         }
                         catch (Exception)
                         {
@@ -243,7 +256,6 @@ namespace DownloadPinterest
                    chromeDriver.Navigate().GoToUrl("https://google.com/");
                     foreach (Cookie ck in allCookies)
                 {
-                     
                         Console.WriteLine(ck); //gets no output here
                     chromeDriver.Manage().Cookies.AddCookie(ck);
                 }
@@ -265,36 +277,44 @@ namespace DownloadPinterest
             }
         }
 
-        private void ThreadCrawlData(string url)
+        private void ThreadCrawlData(int sl)
         {
-            var link = "https://images.wallpaperscraft.com/image/milky_way_starry_sky_stars_128523_3840x2400.jpg";
 
-            chromeDriver.Url = url;
-            chromeDriver.Navigate();
+            int kc = sl * 500;
+
             //  Thread.Sleep(2000);
             IJavaScriptExecutor js = chromeDriver as IJavaScriptExecutor;
-            var scriptTitle = "var a=$('.wallpapers__image').map(function() {return this.alt;}).get(); return a;";
-            var scriptSrc = "var a=$('.wallpapers__image').map(function() {return this.src;}).get();  return a;";
 
+            var scriptTitle = "var a=$('.hCL.kVc.L4E.MIw').map(function() {return this.alt;}).get(); return a;";
+            var scriptSrc = "var a=$('.hCL.kVc.L4E.MIw').map(function() {return this.srcset;}).get();  return a;";
+            var scriptHrefA = "var a=$('.zI7.iyn.Hsu>a').map(function() {return this.href;}).get();  return a;";
+           
             var lstTitle = (System.Collections.ObjectModel.ReadOnlyCollection<object>)js.ExecuteScript(scriptTitle);
             var lstUrl = (System.Collections.ObjectModel.ReadOnlyCollection<object>)js.ExecuteScript(scriptSrc);
-            notification.ActionNotifi = "Get metadata img: " + url;
+            var lstHref = (System.Collections.ObjectModel.ReadOnlyCollection<object>)js.ExecuteScript(scriptHrefA);
 
+            notification.ActionNotifi = "Get metadata img: " + kc;
+            var scriptScroll = "var n = $(document).height(); $('html, body').animate({ scrollTop: "+ kc + " }, 50); ";
+            js.ExecuteScript(scriptScroll);
+            
             for (int i = 0; i < lstTitle.Count; i++)
             {
                 ImageMetaData imageMeta = new ImageMetaData();
-
-
                 string a = (string)lstUrl[i];
                 string title = (string)lstTitle[i];
-                a = a.Replace("300x168", "1920x1080");
-
+                a = a.Replace("4x", "");
                 List<string> lst = a.Split(stringSeparators2, StringSplitOptions.None).ToList();
-                imageMeta.Name = lst[1];
-                imageMeta.Url = a;
-                imageMeta.Tags = title.Replace("Preview wallpaper", "");
+
+                List<string> lst1 = lst[lst.Count - 1].Split(stringSeparators3, StringSplitOptions.None).ToList();
+               
+                if(lst1[lst1.Count - 1]!=null && lst1[lst1.Count - 1] != "" && !lstCheck.Contains(lst1[lst1.Count - 1])) { 
+                imageMeta.Name = lst1[lst1.Count - 1].Trim();
+                imageMeta.Url = lst[lst.Count-1].Trim();
+                imageMeta.Tags = title;
 
                 lstRs.Add(imageMeta);
+                lstCheck.Add(lst1[lst1.Count - 1]);
+                }
             }
 
 
@@ -305,7 +325,7 @@ namespace DownloadPinterest
 
     }
 
-    public class ImageMetaData
+    public class ImageMetaData : IEqualityComparer<ImageMetaData>
     {
         private string tags;
         private string url;
@@ -314,6 +334,16 @@ namespace DownloadPinterest
         public string Url { get => url; set => url = value; }
         public string Tags { get => tags; set => tags = value; }
         public string Name { get => name; set => name = value; }
+
+        public bool Equals( ImageMetaData x,  ImageMetaData y)
+        {
+            return x.Name.Equals(y.Name, StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        public int GetHashCode( ImageMetaData obj)
+        {
+            return obj.Name.GetHashCode();
+        }
     }
 
     public class Notification : INotifyPropertyChanged

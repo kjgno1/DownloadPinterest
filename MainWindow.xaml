@@ -17,6 +17,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="35" />
                 <RowDefinition Height="35" />
+                <RowDefinition Height="35" />
+                <RowDefinition Height="35" />
                 <RowDefinition Height="1*" />
             </Grid.RowDefinitions>
 
@@ -40,7 +42,27 @@
                 <TextBox Grid.Column="1" Name="textTitle"
                          Margin="5"></TextBox>
             </Grid>
-            <WrapPanel Grid.Row="2"
+            <Grid 
+                  Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="*" ></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Label Margin="5,5,50,5">Url:</Label>
+                <TextBox Grid.Column="1" Name="txtUrl"
+                         Margin="5" ></TextBox>
+            </Grid>
+            <Grid 
+                  Grid.Row="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="*" ></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Label Margin="5,5,50,5">SL Scroll:</Label>
+                <TextBox Grid.Column="1" Name="txtScroll"
+                         Margin="5" ></TextBox>
+            </Grid>
+            <WrapPanel Grid.Row="4"
                         Margin="50">
 
 
