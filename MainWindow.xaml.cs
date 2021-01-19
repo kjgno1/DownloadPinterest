@@ -48,7 +48,10 @@ namespace DownloadPinterest
         string[] stringSeparators = new string[] { "\r\n" };
         string[] stringSeparators2 = new string[] { "," };
         string[] stringSeparators3 = new string[] { "/" };
-
+        bool check = true;int turn = 1;
+        List<string> listStrLineElements= new List<string>();
+        string path = Directory.GetParent(System.Reflection.Assembly.GetExecutingAssembly().Location).FullName;
+       
 
         private void click1_Click(object sender, RoutedEventArgs e)
         {
@@ -69,12 +72,20 @@ namespace DownloadPinterest
 
                     notification.ActionNotifi = "Starting";
                     string currentLine = "";
-                    /*currentLine = File.ReadAllText("abc.txt");
-
-                    List<string> listStrLineElements = currentLine.Split(stringSeparators, StringSplitOptions.None).ToList();*/
-
-
+                    string log_path = System.IO.Path.Combine(path, "log.txt");
+                    if (File.Exists(log_path)) { 
+                        currentLine = File.ReadAllText("log.txt");
                    
+
+                    listStrLineElements = currentLine.Split(stringSeparators, StringSplitOptions.None).ToList();
+                    }
+                    else
+                    {
+                        System.IO.File.Create(log_path);
+                    }
+
+
+
 
                     notification.ActionNotifi = "Get list link picture";
 
@@ -112,14 +123,15 @@ namespace DownloadPinterest
                     }
                         chromeDriver.Url = pUrl;
                         chromeDriver.Navigate();
-                    for (int i = 0; i < slScroll; i++)
+                    while(check)
                     {
                         try
                         {
                             IJavaScriptExecutor js = chromeDriver as IJavaScriptExecutor;
                             var addJquery = " script = document.createElement('script');script.src = \"https://code.jquery.com/jquery-3.4.1.min.js\";document.getElementsByTagName('head')[0].appendChild(script);";
                             js.ExecuteScript(addJquery);
-                            ThreadCrawlData(i);
+                            ThreadCrawlData(turn);
+                            turn++;
                         }
                         catch (Exception)
                         {
@@ -191,7 +203,7 @@ namespace DownloadPinterest
                         workSheet.Column(3).AutoFit();
 
                         // file name with .xlsx extension  
-                        string path = Directory.GetParent(System.Reflection.Assembly.GetExecutingAssembly().Location).FullName;
+                        
                         string p_strPath = System.IO.Path.Combine(path, "listing.xlsx");
 
                         if (File.Exists(p_strPath))
@@ -205,6 +217,10 @@ namespace DownloadPinterest
                         File.WriteAllBytes(p_strPath, excel.GetAsByteArray());
                         //Close Excel package 
                         excel.Dispose();
+                        FileInfo logFile = new FileInfo(log_path);
+                        IsFileLocked(logFile);
+                        List<string> strings = lstRs.Select(s => s.Name).ToList();
+                        File.AppendAllLines(log_path, strings);
 
                         notification.ActionNotifi = "Done!!";
                         b = false;
@@ -215,6 +231,27 @@ namespace DownloadPinterest
 
             thread.Start();
 
+        }
+        protected virtual bool IsFileLocked(FileInfo file)
+        {
+            try
+            {
+                using (FileStream stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    stream.Close();
+                }
+            }
+            catch (IOException)
+            {
+                //the file is unavailable because it is:
+                //still being written to
+                //or being processed by another thread
+                //or does not exist (has already been processed)
+                return true;
+            }
+
+            //file is not locked
+            return false;
         }
 
         private void openChrome_Click(object sender, RoutedEventArgs e)
@@ -287,15 +324,18 @@ namespace DownloadPinterest
 
             var scriptTitle = "var a=$('.hCL.kVc.L4E.MIw').map(function() {return this.alt;}).get(); return a;";
             var scriptSrc = "var a=$('.hCL.kVc.L4E.MIw').map(function() {return this.srcset;}).get();  return a;";
-            var scriptHrefA = "var a=$('.zI7.iyn.Hsu>a').map(function() {return this.href;}).get();  return a;";
+            var scriptHrefA = "var a=$('.XiG.sLG.zI7.iyn.Hsu>.zI7.iyn.Hsu>a').map(function() {return this.href;}).get();  return a;";
            
             var lstTitle = (System.Collections.ObjectModel.ReadOnlyCollection<object>)js.ExecuteScript(scriptTitle);
             var lstUrl = (System.Collections.ObjectModel.ReadOnlyCollection<object>)js.ExecuteScript(scriptSrc);
             var lstHref = (System.Collections.ObjectModel.ReadOnlyCollection<object>)js.ExecuteScript(scriptHrefA);
 
-            notification.ActionNotifi = "Get metadata img: " + kc;
+            notification.ActionNotifi = "Đã lấy được: " + lstRs.Count;
             var scriptScroll = "var n = $(document).height(); $('html, body').animate({ scrollTop: "+ kc + " }, 50); ";
             js.ExecuteScript(scriptScroll);
+
+            Thread.Sleep(2000);
+            int coutLst = 0;
             
             for (int i = 0; i < lstTitle.Count; i++)
             {
@@ -307,14 +347,26 @@ namespace DownloadPinterest
 
                 List<string> lst1 = lst[lst.Count - 1].Split(stringSeparators3, StringSplitOptions.None).ToList();
                
-                if(lst1[lst1.Count - 1]!=null && lst1[lst1.Count - 1] != "" && !lstCheck.Contains(lst1[lst1.Count - 1])) { 
+                if(lst1[lst1.Count - 1]!=null && lst1[lst1.Count - 1] != "" && !lstCheck.Contains(lst1[lst1.Count - 1])&& !listStrLineElements.Contains(lst1[lst1.Count - 1].Trim())) { 
                 imageMeta.Name = lst1[lst1.Count - 1].Trim();
                 imageMeta.Url = lst[lst.Count-1].Trim();
                 imageMeta.Tags = title;
+                    coutLst++;
 
                 lstRs.Add(imageMeta);
                 lstCheck.Add(lst1[lst1.Count - 1]);
                 }
+                if (lstRs.Count == slScroll)
+                {
+                    check = false;
+                    break;
+                   
+                }
+            }
+
+            if (coutLst == 0)
+            {
+                chromeDriver.Navigate().GoToUrl((string)lstHref[0]);
             }
 
 

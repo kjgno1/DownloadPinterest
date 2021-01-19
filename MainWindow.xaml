@@ -58,7 +58,7 @@
                     <ColumnDefinition Width="Auto"></ColumnDefinition>
                     <ColumnDefinition Width="*" ></ColumnDefinition>
                 </Grid.ColumnDefinitions>
-                <Label Margin="5,5,50,5">SL Scroll:</Label>
+                <Label Margin="5,5,50,5">SL Ảnh:</Label>
                 <TextBox Grid.Column="1" Name="txtScroll"
                          Margin="5" ></TextBox>
             </Grid>
